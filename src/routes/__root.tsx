@@ -77,18 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CELS Energy Limited | Solar Power Solutions in Owerri" },
+      { title: "CELS Energy Limited | Solar Power Solutions in Nigeria" },
       {
         name: "description",
         content:
-          "CELS Energy Limited brings reliable solar power to homes and businesses in Owerri. Get a free quote for solar panel installation, maintenance, and battery storage.",
+          "CELS Energy Limited brings reliable solar power to homes and businesses in Nigeria. Get a free quote for solar panel installation, maintenance, and battery storage.",
       },
       { name: "author", content: "CELS Energy Limited" },
-      { property: "og:title", content: "CELS Energy Limited | Solar Power Solutions in Owerri" },
+      { property: "og:title", content: "CELS Energy Limited | Solar Power Solutions in Nigeria" },
       {
         property: "og:description",
         content:
-          "Reliable solar panel installation, maintenance, and battery storage for homes and businesses in Owerri.",
+          "Reliable solar panel installation, maintenance, and battery storage for homes and businesses in Nigeria.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

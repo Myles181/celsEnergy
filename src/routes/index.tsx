@@ -25,6 +25,10 @@ import {
   Trash2,
   PhoneCall,
   MessageSquare,
+  Moon,
+  AlertTriangle,
+  PlayCircle,
+  StopCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,21 +48,21 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: "CELS Energy Limited | Solar Power Solutions in Owerri",
+        title: "CELS Energy Limited | Solar Power Solutions in Nigeria",
       },
       {
         name: "description",
         content:
-          "Get reliable solar panel installation, maintenance, and battery storage for homes and businesses in Owerri. Request a free quote from CELS Energy Limited.",
+          "Get reliable solar panel installation, maintenance, and battery storage for homes and businesses in Nigeria. Request a free quote from CELS Energy Limited.",
       },
       {
         property: "og:title",
-        content: "CELS Energy Limited | Solar Power Solutions in Owerri",
+        content: "CELS Energy Limited | Solar Power Solutions in Nigeria",
       },
       {
         property: "og:description",
         content:
-          "Reliable solar power for homes and businesses in Owerri. Free quotes on installation, maintenance, and battery storage.",
+          "Reliable solar power for homes and businesses in Nigeria. Free quotes on installation, maintenance, and battery storage.",
       },
       { property: "og:type", content: "website" },
       { property: "og:image", content: heroImage },
@@ -68,6 +72,12 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
+
+const GOOGLE_MAPS_LISTING =
+  "https://maps.app.goo.gl/bGCFpnN2fzTSeDKz7";
+// Write-review: same listing URL — Google Maps shows "Write a review" prominently on the page.
+// To get a direct review dialog link, go to Google Business Profile → Get more reviews → copy the link.
+const GOOGLE_MAPS_WRITE_REVIEW = GOOGLE_MAPS_LISTING;
 
 const navLinks = [
   { label: "Services", href: "#services" },
@@ -83,7 +93,7 @@ function Index() {
   const [quoteContext, setQuoteContext] = useState<{
     package: string;
     items: LoadItem[] | null;
-    rec: ReturnType<typeof computeRecommendation>;
+    rec: SolarRec | null;
   }>({ package: "5 kVA Family Backup", items: null, rec: null });
 
   const scrollToQuote = () =>
@@ -97,7 +107,7 @@ function Index() {
   const handleCalculatorSelect = (
     pkg: string,
     items: LoadItem[],
-    rec: NonNullable<ReturnType<typeof computeRecommendation>>
+    rec: SolarRec
   ) => {
     setQuoteContext({ package: pkg, items, rec });
     scrollToQuote();
@@ -180,7 +190,7 @@ function Index() {
           <div className="absolute inset-0">
             <img
               src={heroImage}
-              alt="Solar panels installed on a home roof in Owerri"
+              alt="Solar panels installed on a home roof in Lagos"
               className="h-full w-full object-cover"
               width={1344}
               height={896}
@@ -193,14 +203,18 @@ function Index() {
             <div className="max-w-2xl text-white">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-medium backdrop-blur-sm">
                 <Sun className="h-4 w-4 text-brand-gold" />
-                <span>Serving homes & businesses in Owerri</span>
+                <span>Serving homes & businesses across Nigeria</span>
               </div>
               <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                Owerri&apos;s trusted solar power partner
+                Nigeria's trusted solar power partner
               </h1>
-              <p className="mt-6 text-lg leading-relaxed text-white/90 sm:text-xl">
-                CELS Energy Limited designs and installs reliable solar systems that cut your
-                electricity bills and keep the lights on — even when the grid goes down.
+              <p className="mt-4 font-medium italic text-brand-gold text-lg sm:text-xl">
+                "Power dey go, peace of mind no dey go."
+              </p>
+              <p className="mt-4 text-lg leading-relaxed text-white/90 sm:text-xl">
+                Done with epileptic NEPA supply and noisy generators? CELS Energy installs
+                silent hybrid solar systems that keep your home or business running — quietly,
+                without fuel, and without the bill shock.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Button
@@ -219,7 +233,7 @@ function Index() {
                   variant="outline"
                   className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white h-12 px-6 text-base"
                 >
-                  <a href="#calculator">Estimate solar load</a>
+                  <a href="#calculator">Try our free calculator</a>
                 </Button>
               </div>
               <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-white/80">
@@ -229,7 +243,7 @@ function Index() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-brand-gold" />
-                  <span>Quality equipment</span>
+                  <span>Silent, generator-free</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-brand-gold" />
@@ -248,7 +262,7 @@ function Index() {
                 { value: "500+", label: "Installations completed" },
                 { value: "10MW+", label: "Solar capacity deployed" },
                 { value: "24/7", label: "Support available" },
-                { value: "5+ years", label: "Serving Southeast Nigeria" },
+                { value: "5+ years", label: "Serving Southwest Nigeria" },
               ].map((stat) => (
                 <div key={stat.label} className="space-y-1">
                   <p className="text-3xl font-bold text-brand-green">{stat.value}</p>
@@ -343,6 +357,26 @@ function Index() {
               <p className="mt-4 text-lg text-muted-foreground">
                 Select your home appliances to instantly estimate your peak power load and see the recommended solar package.
               </p>
+              <p className="mt-2 text-sm text-muted-foreground/80">
+                Unlike basic inverters that overload and shutdown, a properly sized hybrid system handles your real load — day and night.
+              </p>
+            </div>
+
+            {/* 3-step visual guide */}
+            <div className="mx-auto mt-10 flex max-w-sm items-center justify-center sm:max-w-md">
+              {(["Add appliances", "Calculate", "Get your quote"] as const).map((label, i) => (
+                <div key={label} className="flex items-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white ${
+                      i === 0 ? "bg-brand-green" : i === 1 ? "bg-brand-blue" : "bg-brand-gold"
+                    }`}>
+                      {i + 1}
+                    </div>
+                    <span className="text-center text-[11px] font-semibold text-muted-foreground whitespace-nowrap">{label}</span>
+                  </div>
+                  {i < 2 && <div className="mb-5 mx-3 h-px w-8 shrink-0 bg-border/50 sm:mx-5 sm:w-14" />}
+                </div>
+              ))}
             </div>
 
             <SolarLoadCalculator onSelectPackage={handleCalculatorSelect} />
@@ -478,7 +512,7 @@ function Index() {
                 What Our Customers Say
               </h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                Real stories from homes and businesses across Owerri that made the switch to solar.
+                Real stories from homes and businesses across Nigeria that made the switch to solar.
               </p>
             </div>
 
@@ -486,19 +520,19 @@ function Index() {
               {[
                 {
                   name: "Chinedu Obi",
-                  role: "Homeowner, New Owerri",
+                  role: "Homeowner, Lekki",
                   text: "Since CELS installed our 5kVA system, generator noise is history. My family sleeps better and our monthly power costs dropped significantly.",
                   rating: 5,
                 },
                 {
                   name: "Adaobi Nwosu",
-                  role: "Boutique Owner, Ikenegbu",
+                  role: "Boutique Owner, Ikeja",
                   text: "My shop now runs on solar during the day. No more fuel trips and my customers enjoy uninterrupted air conditioning. Best business decision this year.",
                   rating: 5,
                 },
                 {
                   name: "Emeka Udo",
-                  role: "Estate Manager, Aladinma",
+                  role: "Estate Manager, Victoria Island",
                   text: "CELS handled the full estate installation professionally. Their team was punctual, tidy, and the system has been running smoothly for over a year.",
                   rating: 5,
                 },
@@ -527,6 +561,32 @@ function Index() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+
+            {/* See more reviews CTA */}
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <a
+                href={GOOGLE_MAPS_LISTING}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 rounded-full border border-brand-green/30 bg-white px-6 py-3 text-sm font-semibold text-brand-green shadow-sm transition-colors hover:bg-brand-green-light"
+              >
+                <div className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="h-3.5 w-3.5 fill-brand-gold text-brand-gold" />
+                  ))}
+                </div>
+                See all reviews on Google
+                <ArrowUpRight className="h-4 w-4" />
+              </a>
+              <a
+                href={GOOGLE_MAPS_WRITE_REVIEW}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground underline-offset-2 hover:text-brand-green hover:underline transition-colors"
+              >
+                Happy with us? Leave a review →
+              </a>
             </div>
           </div>
         </section>
@@ -562,7 +622,7 @@ function Index() {
                     {
                       icon: Phone,
                       title: "Responsive local support",
-                      description: "Our Owerri-based team is reachable before, during, and after installation.",
+                      description: "Our Lagos-based team is reachable before, during, and after installation.",
                     },
                   ].map((item) => (
                     <div key={item.title} className="flex gap-4">
@@ -624,13 +684,13 @@ function Index() {
                 </p>
 
                 <div className="mt-8 space-y-4">
-                  <a href="tel:+2348000000000" className="flex items-start gap-4 p-2 rounded-lg hover:bg-white/10 transition-colors">
+                  <a href="tel:+2349066500304" className="flex items-start gap-4 p-2 rounded-lg hover:bg-white/10 transition-colors">
                     <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-brand-gold">
                       <Phone className="h-5 w-5" />
                     </div>
                     <div>
                       <p className="font-medium text-white">Call us directly</p>
-                      <p className="text-white/80 text-sm">+234 (0) 800 CELS SOLAR</p>
+                      <p className="text-white/80 text-sm">+234 906 650 0304</p>
                     </div>
                   </a>
                   <a href="mailto:info@celsenergy.com" className="flex items-start gap-4 p-2 rounded-lg hover:bg-white/10 transition-colors">
@@ -648,7 +708,7 @@ function Index() {
                     </div>
                     <div>
                       <p className="font-medium text-white">Visit our office</p>
-                      <p className="text-white/80 text-sm">Owerri, Imo State, Nigeria</p>
+                      <p className="text-white/80 text-sm">Lagos, Lagos State, Nigeria</p>
                     </div>
                   </div>
                 </div>
@@ -669,7 +729,7 @@ function Index() {
       {/* Mobile Floating Quick Contact Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between border-t border-border bg-white p-3 shadow-lg md:hidden">
         <a
-          href="tel:+2348000000000"
+          href="tel:+2349066500304"
           className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-gray-100 font-semibold text-gray-800 hover:bg-gray-200 transition-colors mr-2"
         >
           <PhoneCall className="h-4 w-4 text-brand-green" />
@@ -700,8 +760,8 @@ function Index() {
                 />
               </div>
               <p className="text-sm text-muted-foreground">
-                Reliable solar power solutions for homes and businesses in Owerri and across
-                Southeast Nigeria.
+                Reliable solar power solutions for homes and businesses in Nigeria and across
+                Southwest Nigeria.
               </p>
             </div>
             <div>
@@ -730,24 +790,57 @@ function Index() {
               <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-brand-green shrink-0" />
-                  Owerri, Imo State, Nigeria
+                  Lagos, Lagos State, Nigeria
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-brand-green shrink-0" />
                   info@celsenergy.com
                 </li>
                 <li className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-brand-green shrink-0" />
-                  +234 800 CELS SOLAR
+                  <a href="tel:+2349066500304" className="flex items-center gap-2 hover:text-brand-green transition-colors">
+                    <Phone className="h-4 w-4 text-brand-green shrink-0" />
+                    +234 906 650 0304
+                  </a>
                 </li>
               </ul>
             </div>
           </div>
           <div className="mt-12 border-t border-border/60 pt-8 text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} CELS Energy Limited. All rights reserved.
+            <p>© {new Date().getFullYear()} CELS Energy Limited. All rights reserved.</p>
+            <p className="mt-2">
+              Site built by{" "}
+              <a
+                href="https://wa.me/2347048568350"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-brand-green hover:underline"
+              >
+                Myles
+              </a>
+            </p>
           </div>
         </div>
       </footer>
+
+      {/* Floating Google review badge — desktop only (mobile has smaller screen) */}
+      <a
+        href={GOOGLE_MAPS_WRITE_REVIEW}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Leave a review on Google Maps"
+        className="fixed bottom-6 right-6 z-40 hidden md:flex items-center gap-2.5 rounded-2xl border border-border bg-white px-4 py-3 shadow-lg transition-all hover:scale-105 hover:shadow-xl"
+      >
+        <div className="flex flex-col items-center leading-none">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Google</span>
+          <div className="mt-0.5 flex items-center gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className="h-3 w-3 fill-brand-gold text-brand-gold" />
+            ))}
+          </div>
+        </div>
+        <div className="h-8 w-px bg-border" />
+        <span className="text-xs font-semibold text-foreground">Rate us</span>
+      </a>
     </div>
   );
 }
@@ -792,59 +885,178 @@ const DEFAULT_LOAD_ITEMS: LoadItem[] = [
   { id: "d4", name: "Refrigerator", watts: 150, quantity: 1, hoursPerDay: 24 },
 ];
 
-// ---------- Itel product catalog ----------
-const ITEL_INVERTERS = [
-  { model: "Itel Solar Inverter 1 kVA",   kva: 1,   maxWatts: 800  },
-  { model: "Itel Solar Inverter 2 kVA",   kva: 2,   maxWatts: 1600 },
-  { model: "Itel Solar Inverter 3.5 kVA", kva: 3.5, maxWatts: 2800 },
-  { model: "Itel Solar Inverter 5 kVA",   kva: 5,   maxWatts: 4000 },
-  { model: "Itel Solar Inverter 10 kVA",  kva: 10,  maxWatts: 8000 },
+// ---------- CELS Energy product catalog ----------
+const HYBRID_INVERTERS = [
+  { model: "Hybrid Inverter 1.2kVA 12V", kva: 1.2, voltage: 12, maxWatts: 960   },
+  { model: "Hybrid Inverter 1.8kVA 12V", kva: 1.8, voltage: 12, maxWatts: 1440  },
+  { model: "Hybrid Inverter 2kVA 12V",   kva: 2,   voltage: 12, maxWatts: 1600  },
+  { model: "Hybrid Inverter 3kVA 24V",   kva: 3,   voltage: 24, maxWatts: 2400  },
+  { model: "Hybrid Inverter 3.5kVA 24V", kva: 3.5, voltage: 24, maxWatts: 2800  },
+  { model: "Hybrid Inverter 4kVA 24V",   kva: 4,   voltage: 24, maxWatts: 3200  },
+  { model: "Hybrid Inverter 5kVA 48V",   kva: 5,   voltage: 48, maxWatts: 4000  },
+  { model: "Hybrid Inverter 6kVA 48V",   kva: 6,   voltage: 48, maxWatts: 4800  },
+  { model: "Hybrid Inverter 8kVA 48V",   kva: 8,   voltage: 48, maxWatts: 6400  },
+  { model: "Hybrid Inverter 10kVA 48V",  kva: 10,  voltage: 48, maxWatts: 8000  },
+  { model: "Hybrid Inverter 12kVA 48V",  kva: 12,  voltage: 48, maxWatts: 9600  },
+  { model: "Hybrid Inverter 20kVA 48V",  kva: 20,  voltage: 48, maxWatts: 16000 },
 ];
 
-const ITEL_POWER_TANK = { model: "Itel Power Tank 1000", wh: 1000 };
-// ------------------------------------------
+const LITHIUM_BATTERIES = [
+  { model: "Lithium Battery 1.3kWh 12V",  kwh: 1.3,  voltage: 12 },
+  { model: "Lithium Battery 2.5kWh 12V",  kwh: 2.5,  voltage: 12 },
+  { model: "Lithium Battery 3kWh 12V",    kwh: 3,    voltage: 12 },
+  { model: "Lithium Battery 3.8kWh 12V",  kwh: 3.8,  voltage: 12 },
+  { model: "Lithium Battery 4kWh 12V",    kwh: 4,    voltage: 12 },
+  { model: "Lithium Battery 2.5kWh 24V",  kwh: 2.5,  voltage: 24 },
+  { model: "Lithium Battery 3kWh 24V",    kwh: 3,    voltage: 24 },
+  { model: "Lithium Battery 3.8kWh 24V",  kwh: 3.8,  voltage: 24 },
+  { model: "Lithium Battery 5kWh 24V",    kwh: 5,    voltage: 24 },
+  { model: "Lithium Battery 7.5kWh 24V",  kwh: 7.5,  voltage: 24 },
+  { model: "Lithium Battery 8kWh 24V",    kwh: 8,    voltage: 24 },
+  { model: "Lithium Battery 5kWh 48V",    kwh: 5,    voltage: 48 },
+  { model: "Lithium Battery 10kWh 48V",   kwh: 10,   voltage: 48 },
+  { model: "Lithium Battery 15kWh 48V",   kwh: 15,   voltage: 48 },
+  { model: "Lithium Battery 17.5kWh 48V", kwh: 17.5, voltage: 48 },
+  { model: "Lithium Battery 20kWh 48V",   kwh: 20,   voltage: 48 },
+  { model: "Lithium Battery 25kWh 48V",   kwh: 25,   voltage: 48 },
+];
 
-function computeRecommendation(items: LoadItem[]) {
+const DEFAULT_PANEL_WATTS = 450;
+// --------------------------------------------------
+
+type SolarRec = {
+  peakLoadKw: number;
+  dailyKwh: number;
+  inverterModel: string;
+  inverterKva: number;
+  inverterVoltage: number;
+  inverterQty: number;
+  panelWatts: number;
+  panelCount: number;
+  batteryModel: string;
+  batteryKwh: number;
+  batteryCount: number;
+  totalBatteryKwh: number;
+  suggestedPackage: string;
+};
+
+function computeRecommendations(items: LoadItem[]): {
+  economy: SolarRec;
+  standard: SolarRec;
+  premium: SolarRec;
+} | null {
   const active = items.filter((it) => it.quantity > 0);
   if (active.length === 0) return null;
 
   const peakLoadW = active.reduce((s, it) => s + it.watts * it.quantity, 0);
-  const dailyWh = active.reduce((s, it) => s + it.watts * it.quantity * it.hoursPerDay, 0);
-
-  // 30% system losses (wiring, inverter, battery inefficiency)
+  const dailyWh   = active.reduce((s, it) => s + it.watts * it.quantity * it.hoursPerDay, 0);
   const energyWithLosses = dailyWh * 1.3;
+  const inverterNeededW  = (peakLoadW / 0.8) * 1.25;
+  const baseNeededKwh    = energyWithLosses / (1000 * 0.85);
+  const basePanels       = Math.max(1, Math.ceil(energyWithLosses / (5 * DEFAULT_PANEL_WATTS * 0.85)));
 
-  // Inverter: cover peak load with 0.8 PF and 25% headroom
-  const inverterNeededW = (peakLoadW / 0.8) * 1.25;
-  const biggest = ITEL_INVERTERS[ITEL_INVERTERS.length - 1]!;
-  const singleUnit = ITEL_INVERTERS.find((inv) => inv.maxWatts >= inverterNeededW);
-  const inverterModel = singleUnit ? singleUnit.model : biggest.model;
-  const inverterKva  = singleUnit ? singleUnit.kva   : biggest.kva;
-  const inverterQty  = singleUnit ? 1 : Math.ceil(inverterNeededW / biggest.maxWatts);
+  const minIdx   = HYBRID_INVERTERS.findIndex((inv) => inv.maxWatts >= inverterNeededW);
+  const safeMin  = minIdx === -1 ? HYBRID_INVERTERS.length - 1 : minIdx;
+  const biggest  = HYBRID_INVERTERS[HYBRID_INVERTERS.length - 1]!;
 
-  // Panels: 450W, 5 peak sun hours (Owerri), 85% module efficiency
-  const panelCount = Math.max(1, Math.ceil(energyWithLosses / (5 * 450 * 0.85)));
-
-  // Itel Power Tank 1000 — 1 kWh rated, use 85% usable
-  const powerTankCount = Math.max(2, Math.ceil(energyWithLosses / (ITEL_POWER_TANK.wh * 0.85)));
-
-  const totalInverterW = inverterKva * inverterQty * 1000;
-  let suggestedPackage: string;
-  if (totalInverterW <= 3500) suggestedPackage = "3.5 kVA Home Starter";
-  else if (totalInverterW <= 5000) suggestedPackage = "5 kVA Family Backup";
-  else suggestedPackage = "10 kVA Commercial Kit";
+  const buildTier = (invIdx: number, batMultiplier: number, extraPanels: number): SolarRec => {
+    const inv        = HYBRID_INVERTERS[Math.min(invIdx, HYBRID_INVERTERS.length - 1)]!;
+    const inverterQty = inv.maxWatts >= inverterNeededW ? 1 : Math.ceil(inverterNeededW / biggest.maxWatts);
+    const compatBats  = LITHIUM_BATTERIES.filter((b) => b.voltage === inv.voltage);
+    const largestBat  = compatBats[compatBats.length - 1]!;
+    const batteryCount     = Math.max(1, Math.ceil((baseNeededKwh * batMultiplier) / largestBat.kwh));
+    const totalBatteryKwh  = batteryCount * largestBat.kwh;
+    const panelCount       = basePanels + extraPanels;
+    const totalKva         = inv.kva * inverterQty;
+    return {
+      peakLoadKw: peakLoadW / 1000,
+      dailyKwh:   dailyWh / 1000,
+      inverterModel:   inv.model,
+      inverterKva:     inv.kva,
+      inverterVoltage: inv.voltage,
+      inverterQty,
+      panelWatts:      DEFAULT_PANEL_WATTS,
+      panelCount,
+      batteryModel:    largestBat.model,
+      batteryKwh:      largestBat.kwh,
+      batteryCount,
+      totalBatteryKwh,
+      suggestedPackage:
+        totalKva <= 3.5 ? "3.5 kVA Home Starter" :
+        totalKva <= 5   ? "5 kVA Family Backup" :
+                          "10 kVA Commercial Kit",
+    };
+  };
 
   return {
-    peakLoadKw: peakLoadW / 1000,
-    dailyKwh: dailyWh / 1000,
-    inverterModel,
-    inverterKva,
-    inverterQty,
-    panelCount,
-    powerTankCount,
-    suggestedPackage,
+    economy:  buildTier(safeMin,     1.0, 0),
+    standard: buildTier(safeMin + 1, 1.5, 2),
+    premium:  buildTier(safeMin + 2, 2.0, 4),
   };
 }
+
+// ---------- Power management guide ----------
+const ALWAYS_ON_KEYWORDS = ["refrigerator", "fridge", "freezer", "modem", "router", "cctv", "security"];
+const HIGH_DRAW_W = 500;
+
+function classifyItem(item: LoadItem): "essential" | "solar_peak" | "flexible" {
+  const n = item.name.toLowerCase();
+  if (item.hoursPerDay >= 20 || ALWAYS_ON_KEYWORDS.some((k) => n.includes(k))) return "essential";
+  if (item.watts >= HIGH_DRAW_W) return "solar_peak";
+  return "flexible";
+}
+
+type PowerGuide = {
+  essential: { name: string; watts: number; qty: number }[];
+  solarPeak: { name: string; watts: number; qty: number }[];
+  flexible:  { name: string; watts: number; qty: number }[];
+  batteryHours: number;
+  warnings: string[];
+};
+
+function generatePowerGuide(
+  items: LoadItem[],
+  rec: SolarRec
+): PowerGuide {
+  const active = items.filter((it) => it.quantity > 0);
+  const essential: PowerGuide["essential"] = [];
+  const solarPeak: PowerGuide["solarPeak"] = [];
+  const flexible:  PowerGuide["flexible"]  = [];
+
+  for (const it of active) {
+    const cat = classifyItem(it);
+    const entry = { name: it.name, watts: it.watts, qty: it.quantity };
+    if (cat === "essential") essential.push(entry);
+    else if (cat === "solar_peak") solarPeak.push(entry);
+    else flexible.push(entry);
+  }
+
+  const inverterCapacityW = rec.inverterKva * rec.inverterQty * 1000 * 0.8;
+  const essentialLoadW = essential.reduce((s, it) => s + it.watts * it.qty, 0);
+
+  // Battery duration on essential loads only
+  const batteryHours = essentialLoadW > 0
+    ? Math.min(99, Math.round((rec.totalBatteryKwh * 1000 * 0.85) / essentialLoadW * 10) / 10)
+    : 0;
+
+  // Flag pairs of high-draw items that together exceed inverter headroom
+  const warnings: string[] = [];
+  for (let i = 0; i < solarPeak.length; i++) {
+    for (let j = i + 1; j < solarPeak.length; j++) {
+      const a = solarPeak[i]!;
+      const b = solarPeak[j]!;
+      const combinedW = essentialLoadW + a.watts * a.qty + b.watts * b.qty;
+      if (combinedW > inverterCapacityW) {
+        warnings.push(
+          `Avoid running ${a.name} and ${b.name} simultaneously — combined draw (${combinedW.toLocaleString()}W) exceeds inverter headroom.`
+        );
+      }
+    }
+  }
+
+  return { essential, solarPeak, flexible, batteryHours, warnings };
+}
+// --------------------------------------------
 
 function SolarLoadCalculator({
   onSelectPackage,
@@ -852,7 +1064,7 @@ function SolarLoadCalculator({
   onSelectPackage: (
     pkg: string,
     items: LoadItem[],
-    rec: NonNullable<ReturnType<typeof computeRecommendation>>
+    rec: SolarRec
   ) => void;
 }) {
   const [items, setItems] = useState<LoadItem[]>(DEFAULT_LOAD_ITEMS);
@@ -872,13 +1084,117 @@ function SolarLoadCalculator({
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
 
-  const rec = computeRecommendation(items);
+  const [mobileTab, setMobileTab] = useState<"appliances" | "results">("appliances");
+  const [result, setResult] = useState<{
+    economy: SolarRec;
+    standard: SolarRec;
+    premium: SolarRec;
+    guide: PowerGuide;
+  } | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const [speechWords, setSpeechWords] = useState<string[]>([]);
+  const [spokenUpTo, setSpokenUpTo] = useState(-1);
+  const [calculating, setCalculating] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  const LOADING_STEPS = [
+    "Calculating peak load…",
+    "Sizing your inverter…",
+    "Matching battery capacity…",
+    "Finalising recommendation…",
+  ];
+
+  const handleSpeak = () => {
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      setSpeechWords([]);
+      setSpokenUpTo(-1);
+      return;
+    }
+    if (!result) return;
+    const { economy, standard, premium, guide } = result;
+    const text = [
+      "Your solar estimate is ready.",
+      `Peak load is ${standard.peakLoadKw.toFixed(1)} kilowatts, using ${standard.dailyKwh.toFixed(1)} kilowatt hours per day.`,
+      "We have 3 system options.",
+      `Economy: ${economy.inverterModel}, ${economy.panelCount} panels, ${economy.batteryCount} batteries totalling ${economy.totalBatteryKwh} kilowatt hours.`,
+      `Standard: ${standard.inverterModel}, ${standard.panelCount} panels, ${standard.batteryCount} batteries totalling ${standard.totalBatteryKwh} kilowatt hours.`,
+      `Premium: ${premium.inverterModel}, ${premium.panelCount} panels, ${premium.batteryCount} batteries totalling ${premium.totalBatteryKwh} kilowatt hours.`,
+      guide.batteryHours > 0 ? `Battery covers essential loads for about ${guide.batteryHours} hours without solar.` : "",
+      guide.warnings[0] ?? "",
+    ].filter(Boolean).join(" ");
+
+    // Build word list and cumulative start positions for boundary matching
+    const words = text.split(/\s+/);
+    const wordStarts: number[] = [];
+    let pos = 0;
+    for (const w of words) { wordStarts.push(pos); pos += w.length + 1; }
+
+    setSpeechWords(words);
+    setSpokenUpTo(-1);
+    setSpeaking(true);
+
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.88;
+    utt.addEventListener("boundary", (e: SpeechSynthesisEvent) => {
+      if (e.name !== "word") return;
+      // Find the rightmost word whose start is <= charIndex
+      let idx = -1;
+      for (let i = 0; i < wordStarts.length; i++) {
+        if (wordStarts[i]! <= e.charIndex) idx = i; else break;
+      }
+      setSpokenUpTo(idx);
+    });
+    utt.onend = () => { setSpeaking(false); setSpeechWords([]); setSpokenUpTo(-1); };
+    utt.onerror = () => { setSpeaking(false); setSpeechWords([]); setSpokenUpTo(-1); };
+    window.speechSynthesis.speak(utt);
+  };
+
+  const handleCalculate = () => {
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+    const recs = computeRecommendations(items);
+    if (!recs) return;
+    setCalculating(true);
+    setResult(null);
+    setLoadingStep(0);
+    let step = 0;
+    const iv = setInterval(() => setLoadingStep(++step), 450);
+    setTimeout(() => {
+      clearInterval(iv);
+      setResult({ ...recs, guide: generatePowerGuide(items, recs.standard) });
+      setCalculating(false);
+      setMobileTab("results");
+      requestAnimationFrame(() => {
+        document.getElementById("tier-cards")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }, 1800);
+  };
 
   return (
     <div className="mt-12 rounded-2xl border border-border/60 bg-white shadow-xl overflow-hidden">
+
+      {/* Mobile tab switcher */}
+      <div className="flex border-b border-border/60 lg:hidden">
+        {(["appliances", "results"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMobileTab(tab)}
+            className={`flex-1 py-3.5 text-sm font-semibold capitalize transition-colors ${
+              mobileTab === tab
+                ? "border-b-2 border-brand-green bg-brand-green-light/30 text-brand-green"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab === "appliances" ? "My Appliances" : `Results${result ? " ✓" : ""}`}
+          </button>
+        ))}
+      </div>
+
       <div className="grid lg:grid-cols-[1fr_340px]">
         {/* Left: load list */}
-        <div className="p-6 sm:p-8 border-b lg:border-b-0 lg:border-r border-border/60">
+        <div className={`p-6 sm:p-8 border-b lg:border-b-0 lg:border-r border-border/60 ${mobileTab === "appliances" ? "block" : "hidden lg:block"}`}>
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold text-foreground">Your appliances</h3>
             {items.length > 0 && (
@@ -1098,100 +1414,269 @@ function SolarLoadCalculator({
             )}
           </div>
 
+          {/* Calculate button */}
+          {items.length > 0 && (
+            <Button
+              onClick={handleCalculate}
+              disabled={calculating}
+              className="mt-4 h-12 w-full bg-brand-green text-base font-semibold text-white hover:bg-brand-green/90 disabled:opacity-60"
+            >
+              <Calculator className="mr-2 h-5 w-5" />
+              {result ? "Recalculate" : "Calculate My Solar System"}
+            </Button>
+          )}
+
           {/* Total summary bar */}
-          {rec && (
+          {result && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
               <span className="font-medium text-foreground">
                 {items.length} appliance{items.length !== 1 ? "s" : ""}
               </span>
               <div className="flex flex-wrap gap-4">
                 <span className="text-muted-foreground">
-                  Peak: <strong className="text-foreground">{rec.peakLoadKw.toFixed(2)} kW</strong>
+                  Peak: <strong className="text-foreground">{result.standard.peakLoadKw.toFixed(2)} kW</strong>
                 </span>
                 <span className="text-muted-foreground">
-                  Daily: <strong className="text-foreground">{rec.dailyKwh.toFixed(2)} kWh</strong>
+                  Daily: <strong className="text-foreground">{result.standard.dailyKwh.toFixed(2)} kWh</strong>
                 </span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right: recommendation panel */}
-        <div className="flex flex-col bg-gradient-to-b from-brand-green-light/30 to-white p-6 sm:p-8">
-          {rec ? (
+        {/* Right: stats + power guide panel */}
+        <div className={`flex flex-col bg-gradient-to-b from-brand-green-light/30 to-white p-6 sm:p-8 ${mobileTab === "results" ? "block" : "hidden lg:flex"}`}>
+          {calculating ? (
+            <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
+              <div className="mb-5 h-12 w-12 animate-spin rounded-full border-4 border-brand-green/20 border-t-brand-green" />
+              <p className="text-sm font-semibold text-foreground">Analysing your system…</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {LOADING_STEPS[loadingStep % LOADING_STEPS.length]}
+              </p>
+            </div>
+          ) : result ? (
             <>
-              <div className="mb-5 flex items-center gap-2">
-                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-green text-white">
-                  <Calculator className="h-4 w-4" />
+              {/* Header */}
+              <div className="mb-5 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-green text-white">
+                    <Calculator className="h-4 w-4" />
+                  </div>
+                  <h3 className="font-semibold text-foreground">System estimate</h3>
                 </div>
-                <h3 className="font-semibold text-foreground">System estimate</h3>
+                <button
+                  onClick={handleSpeak}
+                  title={speaking ? "Stop reading" : "Play summary"}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                    speaking
+                      ? "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                      : "bg-brand-green/10 text-brand-green hover:bg-brand-green/20"
+                  }`}
+                >
+                  {speaking
+                    ? <><StopCircle className="h-3.5 w-3.5" /> Stop</>
+                    : <><PlayCircle className="h-3.5 w-3.5" /> Play</>
+                  }
+                </button>
               </div>
 
+              {/* Stats */}
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Peak load</span>
-                  <span className="font-semibold text-foreground">{rec.peakLoadKw.toFixed(2)} kW</span>
+                  <span className="font-semibold text-foreground">{result.standard.peakLoadKw.toFixed(2)} kW</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Daily energy</span>
-                  <span className="font-semibold text-foreground">{rec.dailyKwh.toFixed(2)} kWh/day</span>
+                  <span className="font-semibold text-foreground">{result.standard.dailyKwh.toFixed(2)} kWh/day</span>
                 </div>
               </div>
 
-              <div className="my-4 h-px bg-border/60" />
-
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Minimum recommended system
-              </p>
-              <div className="space-y-2.5">
-                <div className="flex items-start justify-between gap-2 text-sm">
-                  <span className="text-muted-foreground shrink-0">Inverter</span>
-                  <span className="font-semibold text-brand-green text-right">
-                    {rec.inverterQty > 1 ? `${rec.inverterQty}× ` : ""}{rec.inverterModel}
-                  </span>
+              {/* Live transcript with word highlighting */}
+              {speaking && speechWords.length > 0 && (
+                <div className="mt-4 rounded-xl border border-brand-green/30 bg-brand-green/5 p-4 text-sm leading-7">
+                  {speechWords.map((word, i) => (
+                    <span
+                      key={i}
+                      className={
+                        i <= spokenUpTo
+                          ? "rounded bg-brand-green/25 px-0.5 font-semibold text-brand-green"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {word}{" "}
+                    </span>
+                  ))}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Solar panels (450W)</span>
-                  <span className="font-semibold text-brand-green">{rec.panelCount} panels</span>
-                </div>
-                <div className="flex items-start justify-between gap-2 text-sm">
-                  <span className="text-muted-foreground shrink-0">Battery</span>
-                  <span className="font-semibold text-brand-green text-right">
-                    {rec.powerTankCount}× {ITEL_POWER_TANK.model}
-                  </span>
-                </div>
-              </div>
+              )}
 
-              <div className="my-4 h-px bg-border/60" />
-
-              <div className="flex-1 rounded-xl border border-brand-green/20 bg-brand-green/5 p-4">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand-green">Best match</p>
-                <p className="text-lg font-bold text-foreground">{rec.suggestedPackage}</p>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Based on 5 peak sun hours, 30% system losses, and 80% battery depth of discharge. Actual system may vary.
-                </p>
-              </div>
-
-              <Button
-                onClick={() => onSelectPackage(rec.suggestedPackage, items, rec)}
-                className="mt-5 h-12 w-full bg-brand-green text-base font-semibold text-white hover:bg-brand-green/90"
-              >
-                Get a quote for this
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              {/* Power Management Guide */}
+              {(result.guide.essential.length + result.guide.solarPeak.length + result.guide.flexible.length > 0) && (
+                <>
+                  <div className="my-4 h-px bg-border/60" />
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Power management
+                  </p>
+                  <div className="space-y-3">
+                    {result.guide.essential.length > 0 && (
+                      <div className="rounded-lg border border-brand-green/20 bg-brand-green/5 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <Zap className="h-3.5 w-3.5 text-brand-green" />
+                          <span className="text-xs font-semibold text-brand-green">Always on (essential)</span>
+                        </div>
+                        <p className="text-xs font-medium text-foreground">
+                          {result.guide.essential.map((it) => it.qty > 1 ? `${it.qty}× ${it.name}` : it.name).join(", ")}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">Run 24/7 — size all other decisions around these.</p>
+                        {result.guide.batteryHours > 0 && (
+                          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Battery className="h-3 w-3" />
+                            <span>Essentials covered for <span className="font-semibold text-foreground">~{result.guide.batteryHours} hrs</span> without solar</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {result.guide.solarPeak.length > 0 && (
+                      <div className="rounded-lg border border-brand-gold/20 bg-brand-gold-light/40 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <Sun className="h-3.5 w-3.5 text-brand-gold" />
+                          <span className="text-xs font-semibold text-brand-gold">Use during solar hours (10 am – 3 pm)</span>
+                        </div>
+                        <p className="text-xs font-medium text-foreground">
+                          {result.guide.solarPeak.map((it) => it.qty > 1 ? `${it.qty}× ${it.name}` : it.name).join(", ")}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">Panels power these directly — saves battery for night.</p>
+                      </div>
+                    )}
+                    {result.guide.flexible.length > 0 && (
+                      <div className="rounded-lg border border-brand-blue/20 bg-brand-blue/5 p-3">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <Moon className="h-3.5 w-3.5 text-brand-blue" />
+                          <span className="text-xs font-semibold text-brand-blue">Evening / battery-friendly</span>
+                        </div>
+                        <p className="text-xs font-medium text-foreground">
+                          {result.guide.flexible.map((it) => it.qty > 1 ? `${it.qty}× ${it.name}` : it.name).join(", ")}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">Moderate load — safe after sunset on stored energy.</p>
+                      </div>
+                    )}
+                    {result.guide.warnings.map((w, i) => (
+                      <div key={i} className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                        <p className="text-xs text-destructive">{w}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
               <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-green-light text-brand-green">
                 <Calculator className="h-6 w-6" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Add appliances to see your recommended solar system.
+              <p className="text-sm font-medium text-foreground">
+                {items.length > 0 ? "Ready to calculate" : "Add your appliances"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {items.length > 0
+                  ? "Click \"Calculate My Solar System\" to see your options."
+                  : "Add appliances on the left, then hit Calculate to get your solar recommendation."}
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* 3-tier recommendation cards */}
+      {result && (
+        <div id="tier-cards" className="border-t border-border/60 p-6 sm:p-8">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Choose your system</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">3 options sized to your load — pick what fits your budget</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {(
+              [
+                { key: "economy",  label: "Economy",  desc: "Minimum viable system",         tier: result.economy,  highlight: false },
+                { key: "standard", label: "Standard", desc: "Recommended for most homes",    tier: result.standard, highlight: true  },
+                { key: "premium",  label: "Premium",  desc: "Future-proof with max backup",  tier: result.premium,  highlight: false },
+              ] as const
+            ).map(({ key, label, desc, tier, highlight }, cardIdx) => (
+              <div
+                key={key}
+                style={{
+                  animation: "fadeSlideUp 0.45s ease forwards",
+                  animationDelay: `${cardIdx * 120}ms`,
+                  opacity: 0,
+                }}
+                className={`relative flex flex-col rounded-xl border p-4 ${
+                  highlight
+                    ? "border-brand-green shadow-md shadow-brand-green/10"
+                    : "border-border/60"
+                }`}
+              >
+                {highlight && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-brand-green px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                    Recommended
+                  </span>
+                )}
+                <div className="mb-3">
+                  <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    highlight
+                      ? "bg-brand-green/10 text-brand-green"
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    {label}
+                  </span>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{desc}</p>
+                </div>
+
+                <div className="flex-1 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="shrink-0 text-muted-foreground">Inverter</span>
+                    <span className="text-right font-medium text-foreground leading-snug">
+                      {tier.inverterQty > 1 ? `${tier.inverterQty}× ` : ""}{tier.inverterModel}
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="shrink-0 text-muted-foreground">Battery</span>
+                    <span className="text-right font-medium text-foreground leading-snug">
+                      {tier.batteryCount}× {tier.batteryModel}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Panels</span>
+                    <span className="font-medium text-foreground">{tier.panelCount}× {tier.panelWatts}W</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Storage</span>
+                    <span className="font-semibold text-brand-green">{tier.totalBatteryKwh} kWh</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => onSelectPackage(`${label} — ${tier.suggestedPackage}`, items, tier)}
+                  className={`mt-4 h-9 w-full text-sm font-semibold ${
+                    highlight
+                      ? "bg-brand-green text-white hover:bg-brand-green/90"
+                      : "bg-muted text-foreground hover:bg-muted/80"
+                  }`}
+                  variant={highlight ? "default" : "outline"}
+                >
+                  Get a quote
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-center text-[11px] text-muted-foreground">
+            Based on 5 peak sun hours · 30% system losses · 85% battery usable capacity · Nigeria
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -1200,47 +1685,87 @@ const WA_NUMBER = "2349069047722";
 
 function buildWhatsAppMessage(
   fields: { name: string; property: string; location: string; notes: string },
-  ctx: { package: string; items: LoadItem[] | null; rec: ReturnType<typeof computeRecommendation> }
+  ctx: { package: string; items: LoadItem[] | null; rec: SolarRec | null }
 ) {
-  const header = `🌞 *New Solar Quote Request — CELS Energy*
+  const customerName = fields.name || "Customer";
+  const tierLabel = ctx.package.split(" — ")[0] ?? ctx.package;
 
-👤 *${fields.name || "Customer"}*
-🏠 Property: ${fields.property || "Not specified"}
-📍 Location: ${fields.location || "Owerri"}${fields.notes ? `\n💬 Notes: ${fields.notes}` : ""}
-📦 Package Interest: *${ctx.package}*`;
+  const contactBlock = [
+    `👤 *Name:* ${customerName}`,
+    `🏠 *Property:* ${fields.property || "Not specified"}`,
+    `📍 *Location:* ${fields.location || "Nigeria"}`,
+    fields.notes ? `💬 *Notes:* ${fields.notes}` : "",
+  ].filter(Boolean).join("\n");
 
   if (!ctx.items || !ctx.rec) {
-    return `${header}\n\n_Sent via CELS Energy website_`;
+    return `Hello CELS Energy Team 👋
+
+I'm interested in a solar installation and would like to request a quote.
+
+━━━━━━━━━━━━━━━━━━
+📋 *CUSTOMER DETAILS*
+${contactBlock}
+📦 *Package Interest:* ${ctx.package}
+
+Please reach out to discuss options and pricing. Thank you!
+
+_Sent via CELS Energy website_`;
   }
 
   const { items, rec } = ctx;
+
   const appLines = items
     .filter((it) => it.quantity > 0)
     .map((it) => {
       const wh = it.watts * it.quantity * it.hoursPerDay;
       const label = wh >= 1000 ? `${(wh / 1000).toFixed(2)} kWh/day` : `${Math.round(wh)} Wh/day`;
-      return `  • ${it.quantity}× ${it.name} (${it.watts}W × ${it.hoursPerDay}h) = ${label}`;
+      return `  • ${it.quantity}× ${it.name} (${it.watts}W × ${it.hoursPerDay}h = ${label})`;
     })
     .join("\n");
 
   const inverterLine =
     rec.inverterQty > 1 ? `${rec.inverterQty}× ${rec.inverterModel}` : `1× ${rec.inverterModel}`;
+  const totalPanelKwp = ((rec.panelWatts * rec.panelCount) / 1000).toFixed(2);
 
-  return `${header}
+  const guide = generatePowerGuide(items, rec);
+  const powerTipsLines = [
+    guide.solarPeak.length > 0
+      ? `☀️ Run during solar hours (10am–3pm): ${guide.solarPeak.map((it) => it.name).join(", ")}`
+      : "",
+    guide.flexible.length > 0
+      ? `🌙 Safe for evening/battery use: ${guide.flexible.map((it) => it.name).join(", ")}`
+      : "",
+    guide.batteryHours > 0
+      ? `🔋 Battery backup (essentials only): ~${guide.batteryHours} hrs without solar`
+      : "",
+    ...guide.warnings.map((w) => `⚠️ ${w}`),
+  ].filter(Boolean).join("\n");
+
+  return `Hello CELS Energy Team 👋
+
+I used your solar calculator and I'm ready to move forward. Please find my load details and preferred package below.
 
 ━━━━━━━━━━━━━━━━━━
-🤖 *AI SUMMARY*
+📋 *CUSTOMER DETAILS*
+${contactBlock}
+
+━━━━━━━━━━━━━━━━━━
+⚡ *ENERGY LOAD PROFILE*
 Peak Load: *${rec.peakLoadKw.toFixed(2)} kW*
-Daily Energy: *${rec.dailyKwh.toFixed(2)} kWh/day*
+Daily Consumption: *${rec.dailyKwh.toFixed(2)} kWh/day*
 
 *Appliances:*
 ${appLines}
 
 ━━━━━━━━━━━━━━━━━━
-🔧 *RECOMMENDATION*
-✅ Inverter: ${inverterLine}
-✅ Solar Panels: ${rec.panelCount}× 450W Monocrystalline Panel
-✅ Battery: ${rec.powerTankCount}× ${ITEL_POWER_TANK.model} (${rec.powerTankCount} kWh total)
+🔧 *SELECTED PACKAGE — ${tierLabel.toUpperCase()}*
+• Inverter: ${inverterLine}
+• Solar Panels: ${rec.panelCount}× ${rec.panelWatts}W (${totalPanelKwp} kWp total)
+• Battery Bank: ${rec.batteryCount}× ${rec.batteryModel} (${rec.totalBatteryKwh} kWh total)
+${powerTipsLines ? `\n━━━━━━━━━━━━━━━━━━\n📌 *POWER MANAGEMENT NOTES*\n${powerTipsLines}` : ""}
+
+━━━━━━━━━━━━━━━━━━
+Please contact me to discuss pricing, site survey, and installation timeline. Thank you!
 
 _Sent via CELS Energy Solar Calculator_`;
 }
@@ -1248,7 +1773,7 @@ _Sent via CELS Energy Solar Calculator_`;
 function QuoteForm({
   quoteContext,
 }: {
-  quoteContext: { package: string; items: LoadItem[] | null; rec: ReturnType<typeof computeRecommendation> };
+  quoteContext: { package: string; items: LoadItem[] | null; rec: SolarRec | null };
 }) {
   const [name, setName] = useState("");
   const [property, setProperty] = useState("");
@@ -1266,15 +1791,22 @@ function QuoteForm({
   return (
     <form onSubmit={handleSend} className="mt-5 space-y-4">
       {/* Package badge */}
-      <div className="flex items-center justify-between rounded-xl border border-brand-green/25 bg-brand-green-light/50 px-4 py-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-green">Package</p>
-          <p className="font-semibold text-foreground">{quoteContext.package}</p>
+      <div className="rounded-xl border border-brand-green/25 bg-brand-green-light/50 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-green">Selected system</p>
+          {!hasCalcData && (
+            <a href="#calculator" className="text-xs font-medium text-brand-green hover:underline">
+              Use calculator ↑
+            </a>
+          )}
         </div>
-        {!hasCalcData && (
-          <a href="#calculator" className="text-xs font-medium text-brand-green hover:underline">
-            Use calculator ↑
-          </a>
+        <p className="mt-0.5 font-semibold text-foreground">{quoteContext.package}</p>
+        {quoteContext.rec && (
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>{quoteContext.rec.inverterQty > 1 ? `${quoteContext.rec.inverterQty}× ` : ""}{quoteContext.rec.inverterModel}</span>
+            <span>{quoteContext.rec.panelCount}× {quoteContext.rec.panelWatts}W panels</span>
+            <span>{quoteContext.rec.totalBatteryKwh} kWh storage</span>
+          </div>
         )}
       </div>
 
@@ -1305,12 +1837,12 @@ function QuoteForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="qf-location">Location in Owerri</Label>
+          <Label htmlFor="qf-location">Your location</Label>
           <Input
             id="qf-location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="Aladinma, Ikenegbu…"
+            placeholder="e.g. Lekki, Ikeja, VI…"
             className="h-11 md:h-12"
           />
         </div>
@@ -1336,7 +1868,7 @@ function QuoteForm({
           <p>
             🔧 {quoteContext.rec.inverterQty > 1 ? `${quoteContext.rec.inverterQty}× ` : "1× "}{quoteContext.rec.inverterModel}
             {" · "}{quoteContext.rec.panelCount} panels
-            {" · "}{quoteContext.rec.powerTankCount}× {ITEL_POWER_TANK.model}
+            {" · "}{quoteContext.rec.batteryCount}× {quoteContext.rec.batteryModel}
           </p>
         </div>
       )}
