@@ -206,7 +206,7 @@ function Index() {
                 <span>Serving homes & businesses across Nigeria</span>
               </div>
               <h1 className="mt-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                Nigeria's trusted solar power partner
+                Serving Nigeria for almost a decade
               </h1>
               <p className="mt-4 font-medium italic text-brand-gold text-lg sm:text-xl">
                 "Power dey go, peace of mind no dey go."
@@ -1691,21 +1691,21 @@ function buildWhatsAppMessage(
   const tierLabel = ctx.package.split(" — ")[0] ?? ctx.package;
 
   const contactBlock = [
-    `👤 *Name:* ${customerName}`,
-    `🏠 *Property:* ${fields.property || "Not specified"}`,
-    `📍 *Location:* ${fields.location || "Nigeria"}`,
-    fields.notes ? `💬 *Notes:* ${fields.notes}` : "",
+    `*Name:* ${customerName}`,
+    `*Property:* ${fields.property || "Not specified"}`,
+    `*Location:* ${fields.location || "Nigeria"}`,
+    fields.notes ? `*Notes:* ${fields.notes}` : "",
   ].filter(Boolean).join("\n");
 
   if (!ctx.items || !ctx.rec) {
-    return `Hello CELS Energy Team 👋
+    return `Hello CELS Energy Team,
 
 I'm interested in a solar installation and would like to request a quote.
 
 ━━━━━━━━━━━━━━━━━━
-📋 *CUSTOMER DETAILS*
+*CUSTOMER DETAILS*
 ${contactBlock}
-📦 *Package Interest:* ${ctx.package}
+*Package Interest:* ${ctx.package}
 
 Please reach out to discuss options and pricing. Thank you!
 
@@ -1719,34 +1719,34 @@ _Sent via CELS Energy website_`;
     .map((it) => {
       const wh = it.watts * it.quantity * it.hoursPerDay;
       const label = wh >= 1000 ? `${(wh / 1000).toFixed(2)} kWh/day` : `${Math.round(wh)} Wh/day`;
-      return `  • ${it.quantity}× ${it.name} (${it.watts}W × ${it.hoursPerDay}h = ${label})`;
+      return `  • ${it.quantity}x ${it.name} (${it.watts}W x ${it.hoursPerDay}h = ${label})`;
     })
     .join("\n");
 
   const inverterLine =
-    rec.inverterQty > 1 ? `${rec.inverterQty}× ${rec.inverterModel}` : `1× ${rec.inverterModel}`;
+    rec.inverterQty > 1 ? `${rec.inverterQty}x ${rec.inverterModel}` : `1x ${rec.inverterModel}`;
   const totalPanelKwp = ((rec.panelWatts * rec.panelCount) / 1000).toFixed(2);
 
   const guide = generatePowerGuide(items, rec);
   const powerTipsLines = [
     guide.solarPeak.length > 0
-      ? `☀️ Run during solar hours (10am–3pm): ${guide.solarPeak.map((it) => it.name).join(", ")}`
+      ? `☀ Run during solar hours (10am-3pm): ${guide.solarPeak.map((it) => it.name).join(", ")}`
       : "",
     guide.flexible.length > 0
-      ? `🌙 Safe for evening/battery use: ${guide.flexible.map((it) => it.name).join(", ")}`
+      ? `- Safe for evening/battery use: ${guide.flexible.map((it) => it.name).join(", ")}`
       : "",
     guide.batteryHours > 0
-      ? `🔋 Battery backup (essentials only): ~${guide.batteryHours} hrs without solar`
+      ? `- Battery backup (essentials only): ~${guide.batteryHours} hrs without solar`
       : "",
-    ...guide.warnings.map((w) => `⚠️ ${w}`),
+    ...guide.warnings.map((w) => `⚠ ${w}`),
   ].filter(Boolean).join("\n");
 
-  return `Hello CELS Energy Team 👋
+  return `Hello CELS Energy Team,
 
 I used your solar calculator and I'm ready to move forward. Please find my load details and preferred package below.
 
 ━━━━━━━━━━━━━━━━━━
-📋 *CUSTOMER DETAILS*
+*CUSTOMER DETAILS*
 ${contactBlock}
 
 ━━━━━━━━━━━━━━━━━━
@@ -1758,11 +1758,11 @@ Daily Consumption: *${rec.dailyKwh.toFixed(2)} kWh/day*
 ${appLines}
 
 ━━━━━━━━━━━━━━━━━━
-🔧 *SELECTED PACKAGE — ${tierLabel.toUpperCase()}*
+*SELECTED PACKAGE — ${tierLabel.toUpperCase()}*
 • Inverter: ${inverterLine}
-• Solar Panels: ${rec.panelCount}× ${rec.panelWatts}W (${totalPanelKwp} kWp total)
-• Battery Bank: ${rec.batteryCount}× ${rec.batteryModel} (${rec.totalBatteryKwh} kWh total)
-${powerTipsLines ? `\n━━━━━━━━━━━━━━━━━━\n📌 *POWER MANAGEMENT NOTES*\n${powerTipsLines}` : ""}
+• Solar Panels: ${rec.panelCount}x ${rec.panelWatts}W (${totalPanelKwp} kWp total)
+• Battery Bank: ${rec.batteryCount}x ${rec.batteryModel} (${rec.totalBatteryKwh} kWh total)
+${powerTipsLines ? `\n━━━━━━━━━━━━━━━━━━\n*POWER MANAGEMENT NOTES*\n${powerTipsLines}` : ""}
 
 ━━━━━━━━━━━━━━━━━━
 Please contact me to discuss pricing, site survey, and installation timeline. Thank you!
