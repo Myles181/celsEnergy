@@ -1681,7 +1681,7 @@ function SolarLoadCalculator({
   );
 }
 
-const WA_NUMBER = "2349069047722";
+const WA_NUMBER = "2349066500304";
 
 function buildWhatsAppMessage(
   fields: { name: string; property: string; location: string; notes: string },
@@ -1750,7 +1750,7 @@ I used your solar calculator and I'm ready to move forward. Please find my load 
 ${contactBlock}
 
 ━━━━━━━━━━━━━━━━━━
-⚡ *ENERGY LOAD PROFILE*
+🔥*ENERGY LOAD PROFILE*
 Peak Load: *${rec.peakLoadKw.toFixed(2)} kW*
 Daily Consumption: *${rec.dailyKwh.toFixed(2)} kWh/day*
 
