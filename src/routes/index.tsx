@@ -1750,7 +1750,7 @@ I used your solar calculator and I'm ready to move forward. Please find my load 
 ${contactBlock}
 
 ━━━━━━━━━━━━━━━━━━
-🔥*ENERGY LOAD PROFILE*
+*ENERGY LOAD PROFILE*
 Peak Load: *${rec.peakLoadKw.toFixed(2)} kW*
 Daily Consumption: *${rec.dailyKwh.toFixed(2)} kWh/day*
 
