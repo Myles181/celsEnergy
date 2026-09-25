@@ -1,13 +1,19 @@
 "use server";
 
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
 import bcrypt from "bcryptjs";
 import { DEFAULT_SOLAR_CONFIG } from "./solar-config";
+
+// Required for Node.js environments (local dev). No-op in edge runtimes.
+neonConfig.webSocketConstructor = ws;
 
 function getDb() {
   const url = process.env["DATABASE_URL"];
   if (!url) throw new Error("DATABASE_URL is not set");
-  return neon(url);
+  // Strip channel_binding param — not supported by the WebSocket driver
+  const cleanUrl = url.replace(/[&?]channel_binding=[^&]*/g, "");
+  return neon(cleanUrl);
 }
 
 export async function initDb() {
