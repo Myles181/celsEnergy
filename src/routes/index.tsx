@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getSolarConfig } from "@/lib/admin-server";
+import { DEFAULT_SOLAR_CONFIG, type SolarConfig } from "@/lib/solar-config";
 import {
   Sun,
   Home,
@@ -940,7 +943,7 @@ type SolarRec = {
   suggestedPackage: string;
 };
 
-function computeRecommendations(items: LoadItem[]): {
+function computeRecommendations(items: LoadItem[], cfg: SolarConfig): {
   economy: SolarRec;
   standard: SolarRec;
   premium: SolarRec;
@@ -948,22 +951,27 @@ function computeRecommendations(items: LoadItem[]): {
   const active = items.filter((it) => it.quantity > 0);
   if (active.length === 0) return null;
 
+  const inverters = cfg.hybridInverters.length > 0 ? cfg.hybridInverters : HYBRID_INVERTERS;
+  const batteries = cfg.lithiumBatteries.length > 0 ? cfg.lithiumBatteries : LITHIUM_BATTERIES;
+  const panelWatts = cfg.defaultPanelWatts || DEFAULT_PANEL_WATTS;
+
   const peakLoadW = active.reduce((s, it) => s + it.watts * it.quantity, 0);
   const dailyWh   = active.reduce((s, it) => s + it.watts * it.quantity * it.hoursPerDay, 0);
-  const energyWithLosses = dailyWh * 1.3;
-  const inverterNeededW  = (peakLoadW / 0.8) * 1.25;
-  const baseNeededKwh    = energyWithLosses / (1000 * 0.85);
-  const basePanels       = Math.max(1, Math.ceil(energyWithLosses / (5 * DEFAULT_PANEL_WATTS * 0.85)));
+  const energyWithLosses = dailyWh * cfg.lossFactor;
+  const inverterNeededW  = (peakLoadW / cfg.inverterDerating) * cfg.inverterHeadroom;
+  const baseNeededKwh    = energyWithLosses / (1000 * cfg.batteryDod);
+  const basePanels       = Math.max(1, Math.ceil(energyWithLosses / (cfg.peakSunHours * panelWatts * cfg.panelEfficiency)));
 
-  const minIdx   = HYBRID_INVERTERS.findIndex((inv) => inv.maxWatts >= inverterNeededW);
-  const safeMin  = minIdx === -1 ? HYBRID_INVERTERS.length - 1 : minIdx;
-  const biggest  = HYBRID_INVERTERS[HYBRID_INVERTERS.length - 1]!;
+  const rawMin = inverters.findIndex((inv) => inv.maxWatts >= inverterNeededW);
+  const foundMin = rawMin === -1 ? inverters.length - 1 : rawMin;
+  const safeMin  = Math.max(cfg.minInverterIndex, foundMin);
+  const biggest  = inverters[inverters.length - 1]!;
 
   const buildTier = (invIdx: number, batMultiplier: number, extraPanels: number): SolarRec => {
-    const inv        = HYBRID_INVERTERS[Math.min(invIdx, HYBRID_INVERTERS.length - 1)]!;
+    const inv        = inverters[Math.min(invIdx, inverters.length - 1)]!;
     const inverterQty = inv.maxWatts >= inverterNeededW ? 1 : Math.ceil(inverterNeededW / biggest.maxWatts);
-    const compatBats  = LITHIUM_BATTERIES.filter((b) => b.voltage === inv.voltage);
-    const largestBat  = compatBats[compatBats.length - 1]!;
+    const compatBats  = batteries.filter((b) => b.voltage === inv.voltage);
+    const largestBat  = compatBats[compatBats.length - 1] ?? batteries[batteries.length - 1]!;
     const batteryCount     = Math.max(1, Math.ceil((baseNeededKwh * batMultiplier) / largestBat.kwh));
     const totalBatteryKwh  = batteryCount * largestBat.kwh;
     const panelCount       = basePanels + extraPanels;
@@ -975,7 +983,7 @@ function computeRecommendations(items: LoadItem[]): {
       inverterKva:     inv.kva,
       inverterVoltage: inv.voltage,
       inverterQty,
-      panelWatts:      DEFAULT_PANEL_WATTS,
+      panelWatts,
       panelCount,
       batteryModel:    largestBat.model,
       batteryKwh:      largestBat.kwh,
@@ -989,9 +997,9 @@ function computeRecommendations(items: LoadItem[]): {
   };
 
   return {
-    economy:  buildTier(safeMin,     1.0, 0),
-    standard: buildTier(safeMin + 1, 1.5, 2),
-    premium:  buildTier(safeMin + 2, 2.0, 4),
+    economy:  buildTier(safeMin + cfg.tiers.economy.invSteps,  cfg.tiers.economy.batteryMult,  cfg.tiers.economy.extraPanels),
+    standard: buildTier(safeMin + cfg.tiers.standard.invSteps, cfg.tiers.standard.batteryMult, cfg.tiers.standard.extraPanels),
+    premium:  buildTier(safeMin + cfg.tiers.premium.invSteps,  cfg.tiers.premium.batteryMult,  cfg.tiers.premium.extraPanels),
   };
 }
 
@@ -1067,6 +1075,14 @@ function SolarLoadCalculator({
     rec: SolarRec
   ) => void;
 }) {
+  const { data: solarConfig } = useQuery({
+    queryKey: ["solar-config"],
+    queryFn: () => getSolarConfig(),
+    staleTime: 5 * 60 * 1000,
+    placeholderData: DEFAULT_SOLAR_CONFIG,
+  });
+  const cfg = solarConfig ?? DEFAULT_SOLAR_CONFIG;
+
   const [items, setItems] = useState<LoadItem[]>(DEFAULT_LOAD_ITEMS);
   const [showPresets, setShowPresets] = useState(false);
 
@@ -1154,7 +1170,7 @@ function SolarLoadCalculator({
   const handleCalculate = () => {
     window.speechSynthesis.cancel();
     setSpeaking(false);
-    const recs = computeRecommendations(items);
+    const recs = computeRecommendations(items, cfg);
     if (!recs) return;
     setCalculating(true);
     setResult(null);
