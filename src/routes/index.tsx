@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSolarConfig } from "@/lib/admin-server";
+import { getSolarConfig, recordVisit, updateVisitDuration, recordQuoteEvent } from "@/lib/admin-server";
 import { DEFAULT_SOLAR_CONFIG, type SolarConfig } from "@/lib/solar-config";
 import {
   Sun,
@@ -91,7 +91,49 @@ const navLinks = [
   { label: "Quote", href: "#quote" },
 ];
 
+function useVisitorTracking() {
+  const startRef = useRef<number>(Date.now());
+  const visitIdRef = useRef<string>("");
+
+  useEffect(() => {
+    let sessionId = sessionStorage.getItem("cels_session_id");
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      sessionStorage.setItem("cels_session_id", sessionId);
+    }
+    const visitId = crypto.randomUUID();
+    visitIdRef.current = visitId;
+    sessionStorage.setItem("cels_visit_id", visitId);
+
+    const device = /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop";
+    const referrer = document.referrer || "direct";
+
+    recordVisit({ data: { visitId, sessionId, device, referrer } }).catch(() => {});
+
+    const heartbeat = setInterval(() => {
+      const secs = Math.round((Date.now() - startRef.current) / 1000);
+      updateVisitDuration({ data: { visitId, durationSeconds: secs } }).catch(() => {});
+    }, 30_000);
+
+    const onHide = () => {
+      if (document.visibilityState === "hidden") {
+        const secs = Math.round((Date.now() - startRef.current) / 1000);
+        updateVisitDuration({ data: { visitId, durationSeconds: secs } }).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onHide);
+
+    return () => {
+      clearInterval(heartbeat);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, []);
+
+  return visitIdRef;
+}
+
 function Index() {
+  useVisitorTracking();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [quoteContext, setQuoteContext] = useState<{
     package: string;
@@ -1795,11 +1837,21 @@ function QuoteForm({
   const [property, setProperty] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
+  const formOpenedRef = useRef(false);
 
   const hasCalcData = !!quoteContext.items && !!quoteContext.rec;
 
+  const trackFormOpen = () => {
+    if (formOpenedRef.current) return;
+    formOpenedRef.current = true;
+    const sessionId = sessionStorage.getItem("cels_session_id") ?? "unknown";
+    recordQuoteEvent({ data: { sessionId, eventType: "form_opened", packageSelected: quoteContext.package, hasCalcData } }).catch(() => {});
+  };
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
+    const sessionId = sessionStorage.getItem("cels_session_id") ?? "unknown";
+    recordQuoteEvent({ data: { sessionId, eventType: "whatsapp_sent", packageSelected: quoteContext.package, hasCalcData } }).catch(() => {});
     const msg = buildWhatsAppMessage({ name, property, location, notes }, quoteContext);
     window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
   };
@@ -1833,6 +1885,7 @@ function QuoteForm({
           id="qf-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onFocus={trackFormOpen}
           placeholder="John Doe"
           required
           autoComplete="name"

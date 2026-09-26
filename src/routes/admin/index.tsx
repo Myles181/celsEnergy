@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Shield, LogOut, Settings, Save, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Shield, LogOut, Settings, Save, Plus, Trash2, Eye, EyeOff, RefreshCw, Users, Clock, MessageSquare, ExternalLink, MonitorSmartphone, Smartphone, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ import {
   validateSession,
   getAdminSolarConfig,
   updateSolarConfig,
+  getActivityData,
+  type ActivityData,
 } from "@/lib/admin-server";
 import type { SolarConfig, HybridInverter, LithiumBattery } from "@/lib/solar-config";
 
@@ -19,8 +21,25 @@ export const Route = createFileRoute("/admin/")({
   component: AdminPage,
 });
 
+function formatDuration(secs: number): string {
+  if (secs < 60) return `${secs}s`;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 type Step = "login" | "otp" | "dashboard";
-type TabId = "formula" | "tiers" | "inverters" | "batteries";
+type TabId = "activity" | "formula" | "tiers" | "inverters" | "batteries";
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -30,9 +49,11 @@ function AdminPage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
-  const [activeTab, setActiveTab] = useState<TabId>("formula");
+  const [activeTab, setActiveTab] = useState<TabId>("activity");
   const [config, setConfig] = useState<SolarConfig | null>(null);
   const [showPass, setShowPass] = useState(false);
+  const [activity, setActivity] = useState<ActivityData | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
 
   // Login form
   const [username, setUsername] = useState("");
@@ -49,6 +70,7 @@ function AdminPage() {
         setToken(saved);
         setStep("dashboard");
         loadConfig(saved);
+        loadActivity(saved);
       } else {
         sessionStorage.removeItem("cels_admin_token");
       }
@@ -58,6 +80,15 @@ function AdminPage() {
   async function loadConfig(t: string) {
     const cfg = await getAdminSolarConfig({ data: { token: t } });
     setConfig(cfg);
+  }
+
+  async function loadActivity(t: string) {
+    setActivityLoading(true);
+    try {
+      const data = await getActivityData({ data: { token: t } });
+      setActivity(data);
+    } catch { /* ignore */ }
+    finally { setActivityLoading(false); }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -85,6 +116,7 @@ function AdminPage() {
       setToken(t);
       setStep("dashboard");
       loadConfig(t);
+      loadActivity(t);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "OTP verification failed");
     } finally {
@@ -223,6 +255,7 @@ function AdminPage() {
   }
 
   const tabs: { id: TabId; label: string }[] = [
+    { id: "activity", label: "Activity" },
     { id: "formula", label: "Formula" },
     { id: "tiers", label: "Tiers" },
     { id: "inverters", label: "Inverters" },
@@ -292,6 +325,145 @@ function AdminPage() {
             </button>
           ))}
         </div>
+
+        {/* Activity tab */}
+        {activeTab === "activity" && (
+          <div className="space-y-6">
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                { label: "Total Visitors", value: activity?.totalVisitors ?? "—", icon: Users, color: "text-brand-green" },
+                { label: "Today", value: activity?.todayVisitors ?? "—", icon: Users, color: "text-brand-blue" },
+                { label: "Avg Time on Site", value: activity ? formatDuration(activity.avgDurationSeconds) : "—", icon: Clock, color: "text-brand-gold" },
+                { label: "WhatsApp Sent", value: activity?.whatsappSent ?? "—", icon: MessageSquare, color: "text-brand-green" },
+              ].map(({ label, value, icon: Icon, color }) => (
+                <Card key={label} className="border-border/60">
+                  <CardContent className="p-4">
+                    <Icon className={cn("h-5 w-5 mb-2", color)} />
+                    <p className="text-2xl font-bold">{String(value)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Conversion funnel */}
+            {activity && (
+              <Card className="border-border/60">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Quote Funnel</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[
+                    { label: "Visitors", value: activity.totalVisitors, color: "bg-brand-green" },
+                    { label: "Opened quote form", value: activity.formOpens, color: "bg-brand-gold" },
+                    { label: "Sent WhatsApp message", value: activity.whatsappSent, color: "bg-brand-blue" },
+                  ].map(({ label, value, color }) => {
+                    const pct = activity.totalVisitors > 0 ? Math.round((value / activity.totalVisitors) * 100) : 0;
+                    return (
+                      <div key={label}>
+                        <div className="mb-1 flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{label}</span>
+                          <span className="font-semibold">{value} <span className="text-xs font-normal text-muted-foreground">({pct}%)</span></span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted">
+                          <div className={cn("h-2 rounded-full transition-all", color)} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* Recent visitors */}
+              <Card className="border-border/60">
+                <CardHeader className="flex flex-row items-center justify-between pb-3">
+                  <CardTitle className="text-base">Recent Visitors</CardTitle>
+                  <button onClick={() => loadActivity(token)} className="text-muted-foreground hover:text-foreground">
+                    <RefreshCw className={cn("h-4 w-4", activityLoading && "animate-spin")} />
+                  </button>
+                </CardHeader>
+                <CardContent>
+                  {!activity || activity.recentVisits.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No visits recorded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activity.recentVisits.map((v, i) => (
+                        <div key={i} className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            {v.device === "mobile"
+                              ? <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
+                              : <MonitorSmartphone className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <span className="capitalize text-muted-foreground">{v.device}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{formatDuration(v.durationSeconds)}</span>
+                          <span className="text-xs text-muted-foreground">{formatRelative(v.arrivedAt)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Recent quote events */}
+              <Card className="border-border/60">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Recent Quote Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!activity || activity.recentQuoteEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No quote activity yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activity.recentQuoteEvents.map((q, i) => (
+                        <div key={i} className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("inline-flex h-2 w-2 rounded-full", q.eventType === "whatsapp_sent" ? "bg-brand-green" : "bg-brand-gold")} />
+                            <span className="font-medium">{q.eventType === "whatsapp_sent" ? "WhatsApp sent" : "Form opened"}</span>
+                          </div>
+                          <span className="max-w-[120px] truncate text-xs text-muted-foreground">{q.packageSelected}</span>
+                          <span className="text-xs text-muted-foreground">{formatRelative(q.createdAt)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Google Reviews */}
+            <Card className="border-border/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Star className="h-4 w-4 text-brand-gold" />
+                  Google Reviews
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Live review data requires a Google Places API key. For now, view reviews directly on Google Maps.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <a href="https://maps.app.goo.gl/bGCFpnN2fzTSeDKz7" target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-brand-green/30 bg-brand-green-light px-4 py-2 text-sm font-medium text-brand-green hover:bg-brand-green/10 transition-colors">
+                    <ExternalLink className="h-4 w-4" />
+                    View all reviews
+                  </a>
+                  <a href="https://maps.app.goo.gl/bGCFpnN2fzTSeDKz7" target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                    <ExternalLink className="h-4 w-4" />
+                    Leave a review
+                  </a>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  To enable live review counts and snippets, add <code className="rounded bg-muted px-1 py-0.5">GOOGLE_PLACES_API_KEY</code> and <code className="rounded bg-muted px-1 py-0.5">GOOGLE_PLACE_ID</code> to your .env file.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Formula tab */}
         {activeTab === "formula" && (

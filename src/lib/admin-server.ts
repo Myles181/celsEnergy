@@ -199,3 +199,100 @@ export const updateAdminCredentials = createServerFn()
 
     return { ok: true };
   });
+
+// ─── visitor tracking (public) ────────────────────────────────────────────────
+
+export const recordVisit = createServerFn()
+  .validator(z.object({ visitId: z.string(), sessionId: z.string(), device: z.string(), referrer: z.string() }))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    try {
+      await initDb();
+      const sql = getDb();
+      await sql`
+        INSERT INTO page_visits (id, session_id, device, referrer)
+        VALUES (${data.visitId}, ${data.sessionId}, ${data.device}, ${data.referrer})
+        ON CONFLICT (id) DO NOTHING
+      `;
+    } catch { /* non-fatal */ }
+    return { ok: true };
+  });
+
+export const updateVisitDuration = createServerFn()
+  .validator(z.object({ visitId: z.string(), durationSeconds: z.number() }))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    try {
+      const sql = getDb();
+      await sql`
+        UPDATE page_visits SET duration_seconds = ${data.durationSeconds}
+        WHERE id = ${data.visitId}
+      `;
+    } catch { /* non-fatal */ }
+    return { ok: true };
+  });
+
+export const recordQuoteEvent = createServerFn()
+  .validator(z.object({
+    sessionId: z.string(),
+    eventType: z.enum(["form_opened", "whatsapp_sent"]),
+    packageSelected: z.string(),
+    hasCalcData: z.boolean(),
+  }))
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    try {
+      const sql = getDb();
+      const id = crypto.randomUUID();
+      await sql`
+        INSERT INTO quote_events (id, session_id, event_type, package_selected, has_calc_data)
+        VALUES (${id}, ${data.sessionId}, ${data.eventType}, ${data.packageSelected}, ${data.hasCalcData})
+      `;
+    } catch { /* non-fatal */ }
+    return { ok: true };
+  });
+
+// ─── activity data (admin only) ──────────────────────────────────────────────
+
+export type ActivityData = {
+  totalVisitors: number;
+  todayVisitors: number;
+  avgDurationSeconds: number;
+  formOpens: number;
+  whatsappSent: number;
+  recentVisits: Array<{ arrivedAt: string; device: string; durationSeconds: number }>;
+  recentQuoteEvents: Array<{ createdAt: string; eventType: string; packageSelected: string; hasCalcData: boolean }>;
+};
+
+export const getActivityData = createServerFn()
+  .validator(z.object({ token: z.string() }))
+  .handler(async ({ data }): Promise<ActivityData> => {
+    await requireSession(data.token);
+    const sql = getDb();
+
+    const [totalsRow, todayRow, avgRow, formRow, waRow, recentVisits, recentQuotes] = await Promise.all([
+      sql`SELECT COUNT(DISTINCT session_id) AS total FROM page_visits`,
+      sql`SELECT COUNT(DISTINCT session_id) AS today FROM page_visits WHERE arrived_at >= NOW() - INTERVAL '24 hours'`,
+      sql`SELECT COALESCE(AVG(duration_seconds), 0) AS avg FROM page_visits WHERE duration_seconds > 0`,
+      sql`SELECT COUNT(*) AS cnt FROM quote_events WHERE event_type = 'form_opened'`,
+      sql`SELECT COUNT(*) AS cnt FROM quote_events WHERE event_type = 'whatsapp_sent'`,
+      sql`SELECT device, arrived_at, duration_seconds FROM page_visits ORDER BY arrived_at DESC LIMIT 20`,
+      sql`SELECT event_type, package_selected, has_calc_data, created_at FROM quote_events ORDER BY created_at DESC LIMIT 20`,
+    ]);
+
+    return {
+      totalVisitors: Number((totalsRow[0] as Record<string, unknown>)?.['total'] ?? 0),
+      todayVisitors: Number((todayRow[0] as Record<string, unknown>)?.['today'] ?? 0),
+      avgDurationSeconds: Math.round(Number((avgRow[0] as Record<string, unknown>)?.['avg'] ?? 0)),
+      formOpens: Number((formRow[0] as Record<string, unknown>)?.['cnt'] ?? 0),
+      whatsappSent: Number((waRow[0] as Record<string, unknown>)?.['cnt'] ?? 0),
+      recentVisits: (recentVisits as Array<Record<string, unknown>>).map((v) => ({
+        arrivedAt: String(v['arrived_at']),
+        device: String(v['device']),
+        durationSeconds: Number(v['duration_seconds']),
+      })),
+      recentQuoteEvents: (recentQuotes as Array<Record<string, unknown>>).map((q) => ({
+        createdAt: String(q['created_at']),
+        eventType: String(q['event_type']),
+        packageSelected: String(q['package_selected'] ?? "—"),
+        hasCalcData: Boolean(q['has_calc_data']),
+      })),
+    };
+  });

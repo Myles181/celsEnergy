@@ -73,6 +73,28 @@ export async function initDb() {
       VALUES (1, ${JSON.stringify(DEFAULT_SOLAR_CONFIG)})
     `;
   }
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_visits (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      device TEXT NOT NULL DEFAULT 'unknown',
+      referrer TEXT,
+      arrived_at TIMESTAMPTZ DEFAULT NOW(),
+      duration_seconds INTEGER DEFAULT 0
+    )
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS quote_events (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      package_selected TEXT,
+      has_calc_data BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
 }
 
 export { getDb };
