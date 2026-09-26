@@ -259,6 +259,10 @@ export type ActivityData = {
   whatsappSent: number;
   recentVisits: Array<{ arrivedAt: string; device: string; durationSeconds: number }>;
   recentQuoteEvents: Array<{ createdAt: string; eventType: string; packageSelected: string; hasCalcData: boolean }>;
+  visitsByDay: Array<{ date: string; visitors: number }>;
+  eventsByDay: Array<{ date: string; formOpens: number; whatsappSent: number }>;
+  deviceBreakdown: Array<{ device: string; count: number }>;
+  durationBuckets: Array<{ label: string; count: number }>;
 };
 
 export const getActivityData = createServerFn()
@@ -267,7 +271,12 @@ export const getActivityData = createServerFn()
     await requireSession(data.token);
     const sql = getDb();
 
-    const [totalsRow, todayRow, avgRow, formRow, waRow, recentVisits, recentQuotes] = await Promise.all([
+    const [
+      totalsRow, todayRow, avgRow, formRow, waRow,
+      recentVisits, recentQuotes,
+      visitsByDayRaw, formsByDayRaw, waByDayRaw,
+      deviceRaw, durationRaw,
+    ] = await Promise.all([
       sql`SELECT COUNT(DISTINCT session_id) AS total FROM page_visits`,
       sql`SELECT COUNT(DISTINCT session_id) AS today FROM page_visits WHERE arrived_at >= NOW() - INTERVAL '24 hours'`,
       sql`SELECT COALESCE(AVG(duration_seconds), 0) AS avg FROM page_visits WHERE duration_seconds > 0`,
@@ -275,7 +284,49 @@ export const getActivityData = createServerFn()
       sql`SELECT COUNT(*) AS cnt FROM quote_events WHERE event_type = 'whatsapp_sent'`,
       sql`SELECT device, arrived_at, duration_seconds FROM page_visits ORDER BY arrived_at DESC LIMIT 20`,
       sql`SELECT event_type, package_selected, has_calc_data, created_at FROM quote_events ORDER BY created_at DESC LIMIT 20`,
+      sql`SELECT TO_CHAR(arrived_at AT TIME ZONE 'UTC', 'Mon DD') AS date, COUNT(DISTINCT session_id) AS visitors
+          FROM page_visits WHERE arrived_at >= NOW() - INTERVAL '14 days'
+          GROUP BY DATE_TRUNC('day', arrived_at), TO_CHAR(arrived_at AT TIME ZONE 'UTC', 'Mon DD')
+          ORDER BY DATE_TRUNC('day', arrived_at)`,
+      sql`SELECT TO_CHAR(created_at AT TIME ZONE 'UTC', 'Mon DD') AS date, COUNT(*) AS cnt
+          FROM quote_events WHERE event_type = 'form_opened' AND created_at >= NOW() - INTERVAL '14 days'
+          GROUP BY DATE_TRUNC('day', created_at), TO_CHAR(created_at AT TIME ZONE 'UTC', 'Mon DD')
+          ORDER BY DATE_TRUNC('day', created_at)`,
+      sql`SELECT TO_CHAR(created_at AT TIME ZONE 'UTC', 'Mon DD') AS date, COUNT(*) AS cnt
+          FROM quote_events WHERE event_type = 'whatsapp_sent' AND created_at >= NOW() - INTERVAL '14 days'
+          GROUP BY DATE_TRUNC('day', created_at), TO_CHAR(created_at AT TIME ZONE 'UTC', 'Mon DD')
+          ORDER BY DATE_TRUNC('day', created_at)`,
+      sql`SELECT device, COUNT(*) AS cnt FROM page_visits GROUP BY device`,
+      sql`SELECT
+            CASE
+              WHEN duration_seconds < 60 THEN '<1 min'
+              WHEN duration_seconds < 180 THEN '1–3 min'
+              WHEN duration_seconds < 300 THEN '3–5 min'
+              ELSE '5+ min'
+            END AS bucket,
+            COUNT(*) AS cnt
+          FROM page_visits WHERE duration_seconds > 0
+          GROUP BY bucket`,
     ]);
+
+    // Merge visits/events by day into a single timeline
+    const dayMap = new Map<string, { visitors: number; formOpens: number; whatsappSent: number }>();
+    for (const r of visitsByDayRaw as Array<Record<string, unknown>>) {
+      const d = String(r['date']);
+      dayMap.set(d, { visitors: Number(r['visitors']), formOpens: 0, whatsappSent: 0 });
+    }
+    for (const r of formsByDayRaw as Array<Record<string, unknown>>) {
+      const d = String(r['date']);
+      const existing = dayMap.get(d) ?? { visitors: 0, formOpens: 0, whatsappSent: 0 };
+      dayMap.set(d, { ...existing, formOpens: Number(r['cnt']) });
+    }
+    for (const r of waByDayRaw as Array<Record<string, unknown>>) {
+      const d = String(r['date']);
+      const existing = dayMap.get(d) ?? { visitors: 0, formOpens: 0, whatsappSent: 0 };
+      dayMap.set(d, { ...existing, whatsappSent: Number(r['cnt']) });
+    }
+
+    const bucketOrder = ['<1 min', '1–3 min', '3–5 min', '5+ min'];
 
     return {
       totalVisitors: Number((totalsRow[0] as Record<string, unknown>)?.['total'] ?? 0),
@@ -294,5 +345,15 @@ export const getActivityData = createServerFn()
         packageSelected: String(q['package_selected'] ?? "—"),
         hasCalcData: Boolean(q['has_calc_data']),
       })),
+      visitsByDay: Array.from(dayMap.entries()).map(([date, d]) => ({ date, visitors: d.visitors })),
+      eventsByDay: Array.from(dayMap.entries()).map(([date, d]) => ({ date, formOpens: d.formOpens, whatsappSent: d.whatsappSent })),
+      deviceBreakdown: (deviceRaw as Array<Record<string, unknown>>).map((r) => ({
+        device: String(r['device']),
+        count: Number(r['cnt']),
+      })),
+      durationBuckets: bucketOrder.map((label) => {
+        const row = (durationRaw as Array<Record<string, unknown>>).find((r) => r['bucket'] === label);
+        return { label, count: Number(row?.['cnt'] ?? 0) };
+      }),
     };
   });

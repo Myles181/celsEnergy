@@ -1,5 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import {
+  AreaChart, Area,
+  BarChart, Bar,
+  PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { Shield, LogOut, Settings, Save, Plus, Trash2, Eye, EyeOff, RefreshCw, Users, Clock, MessageSquare, ExternalLink, MonitorSmartphone, Smartphone, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -374,6 +381,121 @@ function AdminPage() {
                   })}
                 </CardContent>
               </Card>
+            )}
+
+            {/* Charts row */}
+            {activity && (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {/* Visitor trend */}
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Visitors — last 14 days</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {activity.visitsByDay.length === 0 ? (
+                      <p className="py-8 text-center text-sm text-muted-foreground">No data yet</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={activity.visitsByDay} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="visitorGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#16a34a" stopOpacity={0.25} />
+                              <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                          <Area type="monotone" dataKey="visitors" stroke="#16a34a" strokeWidth={2} fill="url(#visitorGrad)" dot={{ r: 3, fill: "#16a34a" }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Funnel events by day */}
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Quote funnel — last 14 days</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {activity.eventsByDay.length === 0 ? (
+                      <p className="py-8 text-center text-sm text-muted-foreground">No data yet</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={activity.eventsByDay} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                          <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                          <Bar dataKey="formOpens" name="Form opens" fill="#d97706" radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="whatsappSent" name="WhatsApp sent" fill="#16a34a" radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Device breakdown */}
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Device breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-center">
+                    {activity.deviceBreakdown.length === 0 ? (
+                      <p className="py-8 text-center text-sm text-muted-foreground">No data yet</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={activity.deviceBreakdown}
+                            dataKey="count"
+                            nameKey="device"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            label={({ device, percent }) => `${device} ${Math.round((percent as number) * 100)}%`}
+                            labelLine={false}
+                          >
+                            {activity.deviceBreakdown.map((_entry, i) => (
+                              <Cell key={i} fill={["#16a34a", "#2563eb", "#d97706"][i % 3]} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Time on site distribution */}
+                <Card className="border-border/60">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Time on site</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {activity.durationBuckets.every((b) => b.count === 0) ? (
+                      <p className="py-8 text-center text-sm text-muted-foreground">No data yet</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={activity.durationBuckets} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                          <Bar dataKey="count" name="Visitors" fill="#2563eb" radius={[3, 3, 0, 0]}>
+                            {activity.durationBuckets.map((_entry, i) => (
+                              <Cell key={i} fill={["#2563eb", "#16a34a", "#d97706", "#7c3aed"][i % 4]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             <div className="grid gap-4 lg:grid-cols-2">
